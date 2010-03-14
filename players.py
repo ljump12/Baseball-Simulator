@@ -42,7 +42,10 @@ class Player():
         self.snapshots      = {}
 
     def cum_prob(self, type):
-        """ This will return the cumulative probabilities """
+        """ This will return the cumulative probabilities, this allows us to
+            easily use a random number generator to determine events
+        """
+        
         prob = self.prob("walk")
         if type == "walk": return prob
         prob += self.prob("single")
@@ -57,6 +60,11 @@ class Player():
         return None
 
     def prob(self, type):
+        """ This determines the probability of any single event. We calculate
+            the probability by taking the number of times the event happened,
+            and dividing it by the total plate appearances of the batter (or pitcher)
+        """
+
         prob = None
         if type == "walk":
             prob = float(self.total_walks)/self.plate_appearances()
@@ -71,9 +79,15 @@ class Player():
         return prob
 
     def plate_appearances(self):
+        """ Calculates the number of plate appearances the player had """
+
         return (self.total_at_bats + self.total_walks + self.total_hbp + self.total_sac_fly)
 
     def process_at_bats(self):
+        """ Processes through the results from the database, adding each event to our
+            player object
+        """
+
         for atbat in self.atbats_raw:
             event       = int(atbat[34])
             event_tx    = str(atbat[29])
@@ -130,17 +144,20 @@ class Player():
 
  
 class Batter(Player):
+    """ This extends the Player Object with certain function's individual to a batter """
+
     def __init__(self, player_id, player_ln, player_fn, db_connect, start_date="090405", end_date="091001"):
         Player.__init__(self, player_id, player_ln, player_fn, db_connect, start_date, end_date)
 
     def calc_batting_avg(self):
-        """ Calculates the batting avg of the player """
+        """ Calculates the batting avg of the batter """
         if self.total_at_bats > 0:
             return (self.total_hits/float(self.total_at_bats))
         else:
             return 0.0
 
     def calc_total_bases(self):
+        """ Calculates total bases """
         return (self.total_singles + (2*self.total_doubles) + (3*self.total_triples) + (4*self.total_home_runs))
 
     def calc_obp(self):
@@ -173,7 +190,11 @@ class Batter(Player):
         self.atbats_raw = cursor.fetchall()
         
 class Snapshot(Batter):
-    """ This class is used to take a snapshot of a players stats in time"""
+    """ This class is used to take a snapshot of a players stats in time, snapshots are added onto
+        player objects in a map, and can be accessed by their date. Becuase it is an extention of 
+        the batter, we can access all the normal functions as if it weren't a snapshot.
+    """
+    
     def __init__(self, Batter):
         self.total_at_bats  = copy(Batter.total_at_bats)
         self.total_runs     = copy(Batter.total_runs)
@@ -192,6 +213,7 @@ class Snapshot(Batter):
         self.total_games    = copy(Batter.total_games)
 
 class Pitcher(Player):
+    """ This extends the Player Object with certain function's individual to a batter """
     def __init__(self, player_id, player_ln, player_fn, db_connect, start_date="090405", end_date="091001"):
         Player.__init__(self, player_id, player_ln, player_fn, db_connect, start_date, end_date)
 
@@ -213,4 +235,26 @@ class Pitcher(Player):
             return 0.0
 
 
+class Snapshot(Pitcher):
+    """ This class is used to take a snapshot of a players stats in time, snapshots are added onto
+        player objects in a map, and can be accessed by their date. Becuase it is an extention of 
+        the pitcher, we can access all the normal functions as if it weren't a snapshot.
+    """
+    
+    def __init__(self, Pitcher):
+        self.total_at_bats  = copy(Pitcher.total_at_bats)
+        self.total_runs     = copy(Pitcher.total_runs)
+        self.total_hits     = copy(Pitcher.total_hits)
+        self.total_walks    = copy(Pitcher.total_walks)
+        self.total_so       = copy(Pitcher.total_so)
+        self.total_hbp      = copy(Pitcher.total_hbp)
+        self.total_sac_fly  = copy(Pitcher.total_sac_fly)
+        self.total_rbi      = copy(Pitcher.total_rbi)
+
+        self.total_singles  = copy(Pitcher.total_singles)
+        self.total_doubles  = copy(Pitcher.total_doubles)
+        self.total_triples  = copy(Pitcher.total_triples)
+        self.total_home_runs= copy(Pitcher.total_home_runs)
+
+        self.total_games    = copy(Pitcher.total_games)
 
