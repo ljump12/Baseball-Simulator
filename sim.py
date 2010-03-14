@@ -133,15 +133,16 @@ class Simulation():
             self.away_runs  += self.bases.runs
         else:
             self.home_runs  += self.bases.runs
-        self.inning += .5
 
         ## Check whether it's the end of the game
-        if self.inning == 9.5 or (self.inning == 9 and self.home_runs > self.away_runs):
+        print "Debug Variables: inning=",self.inning,"home_runs=",self.home_runs,"away_runs=",self.away_runs,"end_game=",self.end_game
+        if (self.inning == 9 and self.home_runs > self.away_runs) or (self.inning > 9 and self.inning % 1 != 0.0 and self.home_runs != self.away_runs):
             self.end_game = True
         ## Reset the bases and outs for the next inning
         else:
             self.outs   = 0
             self.bases  = Bases()      
+        self.inning += .5
 
     def reset_game(self):
         self.bases = Bases()
@@ -155,7 +156,21 @@ class Simulation():
         self.home_batter    = 0
         self.away_batter    = 0
 
+    def translate_inning(self):
+        was_inning = self.inning -.5
+        if was_inning % 1 == 0.0:
+            half = "top"
+        else: 
+            half = "bottom"
 
+        if int(was_inning) == 1:
+            return half+" of the 1st"
+        elif int(was_inning) == 2:
+            return half+" of the 2nd"
+        elif int(was_inning) == 3:
+            return half+" of the 3rd"
+        elif int(was_inning) >= 4:
+            return half+" of the "+str(int(was_inning))+"th"
 
 def main():
     sim = Simulation()
@@ -167,7 +182,7 @@ def main():
     total_away_wins = 0
     total_home_runs = 0
     total_away_runs = 0
-    num_games = 10000.0
+    num_games = 1000.0
     game_num  = 0
     
 
@@ -179,20 +194,20 @@ def main():
             if sim.inning % 1 == 0.0:
                 pitcher = sim.home_pitchers[0]
                 batter = sim.away_lineup[sim.away_batter % 9]
-                #print batter.ln,"faces",pitcher.ln,"and gets a",sim.determine_result(batter,pitcher)
-                sim.determine_result(batter,pitcher)
+                result = sim.determine_result(batter,pitcher)
+                print batter.ln,"faces",pitcher.ln,"and gets a",result
                 sim.away_batter +=1
             else:
                 pitcher = sim.away_pitchers[0]
                 batter = sim.home_lineup[sim.home_batter % 9]
-                #print batter.ln,"faces",pitcher.ln,"and gets a",sim.determine_result(batter,pitcher)
-                sim.determine_result(batter,pitcher)
+                result = sim.determine_result(batter,pitcher)
+                print batter.ln,"faces",pitcher.ln,"and gets a",result
                 sim.home_batter +=1
-            if sim.outs >= 3:
+            if sim.outs >= 3 or (sim.bases.runs+sim.home_runs > sim.away_runs and sim.inning >= 9.5 and sim.inning % 1 != 0.0):
                 sim.wrap_up_inning()
-                #print "The current score is",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
+                print "After the",sim.translate_inning(),"the score is:",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
         
-        print "The game ended:",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
+        print "The game ended in",int(sim.inning)-1,"innings:",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
         if sim.home_runs > sim.away_runs:
             total_home_wins += 1
         else:
