@@ -8,18 +8,7 @@ class Simulation():
         ## Connect to the database
         self.conn = connect_mysql()
         
-        ## Setup simulation variables. When get_player_data is called, the strings will
-        ## be replaced with player objects. 
-        self.year       = "2009"
-        self.home_team       = "PHI"
-        self.home_pitchers   = ["Hamels","Park","Lidge"]
-        self.home_lineup     = ["Rollins","Victorino","Utley","Howard","Werth","Ibanez","Feliz","Ruiz","Happ"]
-
-        self.away_team      = "ATL"
-        self.away_pitchers  = ["Hanson"]
-        self.away_lineup    = ["McLouth","Prado","Jones","Diaz","Anderson","Infante","Ross","Conrad","Hanson"]
-
-        #self.away_team      = "HOU"
+                #self.away_team      = "HOU"
         #self.away_pitchers  = ["Lopez"]
         #self.away_lineup    = ["Matsui","Tejada","Berkman","Lee","Pence","Keppinger","Michaels","Towles","Lopez"]
         
@@ -172,59 +161,70 @@ class Simulation():
         elif int(was_inning) >= 4:
             return half+" of the "+str(int(was_inning))+"th"
 
+    def run_sim():
+        total_home_wins = 0
+        total_away_wins = 0
+        total_home_runs = 0
+        total_away_runs = 0
+        num_games = 1000.0
+        game_num  = 0
+
+        while (game_num < num_games):
+            self.reset_game()
+            while self.end_game == False:
+                if self.inning % 1 == 0.0:
+                    pitcher = self.home_pitchers[0]
+                    batter = self.away_lineup[self.away_batter % 9]
+                    result = self.determine_result(batter,pitcher)
+                    print batter.ln,"faces",pitcher.ln,"and gets a",result
+                    self.away_batter +=1
+                else:
+                    pitcher = self.away_pitchers[0]
+                    batter = self.home_lineup[self.home_batter % 9]
+                    result = self.determine_result(batter,pitcher)
+                    print batter.ln,"faces",pitcher.ln,"and gets a",result
+                    self.home_batter +=1
+                if self.outs >= 3 or (self.bases.runs+self.home_runs > self.away_runs and self.inning >= 9.5 and self.inning % 1 != 0.0):
+                    self.wrap_up_inning()
+                    print "After the",self.translate_inning(),"the score is:",self.away_team,self.away_runs,self.home_team,self.home_runs
+            
+            print "The game ended in",int(self.inning)-1,"innings:",self.away_team,self.away_runs,self.home_team,self.home_runs
+            if self.home_runs > self.away_runs:
+                total_home_wins += 1
+            else:
+                total_away_wins += 1
+            total_home_runs += self.home_runs
+            total_away_runs += self.away_runs
+
+
+            game_num += 1
+
+
+        print "Total Statistics:"
+        print "Home ("+str(self.home_team)+") Wins:",total_home_wins
+        print "Away ("+str(self.away_team)+") Wins:",total_away_wins
+        print "Avg Home Runs",total_home_runs/num_games
+        print "Avg Away Runs",total_away_runs/num_games
+
 def main():
     sim = Simulation()
+
+    ## Setup simulation variables. When get_player_data is called, the strings will
+    ## be replaced with player objects. 
+    sim.year       = "2009"
+    sim.home_team       = "PHI"
+    sim.home_pitchers   = ["Hamels","Park","Lidge"]
+    sim.home_lineup     = ["Rollins","Victorino","Utley","Howard","Werth","Ibanez","Feliz","Ruiz","Happ"]
+
+    sim.away_team      = "ATL"
+    sim.away_pitchers  = ["Hanson"]
+    sim.away_lineup    = ["McLouth","Prado","Jones","Diaz","Anderson","Infante","Ross","Conrad","Hanson"]
+
     sim.get_player_data()
+    sim.run_sim()
 
 
-
-    total_home_wins = 0
-    total_away_wins = 0
-    total_home_runs = 0
-    total_away_runs = 0
-    num_games = 1000.0
-    game_num  = 0
     
-
-
-
-    while (game_num < num_games):
-        sim.reset_game()
-        while sim.end_game == False:
-            if sim.inning % 1 == 0.0:
-                pitcher = sim.home_pitchers[0]
-                batter = sim.away_lineup[sim.away_batter % 9]
-                result = sim.determine_result(batter,pitcher)
-                print batter.ln,"faces",pitcher.ln,"and gets a",result
-                sim.away_batter +=1
-            else:
-                pitcher = sim.away_pitchers[0]
-                batter = sim.home_lineup[sim.home_batter % 9]
-                result = sim.determine_result(batter,pitcher)
-                print batter.ln,"faces",pitcher.ln,"and gets a",result
-                sim.home_batter +=1
-            if sim.outs >= 3 or (sim.bases.runs+sim.home_runs > sim.away_runs and sim.inning >= 9.5 and sim.inning % 1 != 0.0):
-                sim.wrap_up_inning()
-                print "After the",sim.translate_inning(),"the score is:",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
-        
-        print "The game ended in",int(sim.inning)-1,"innings:",sim.away_team,sim.away_runs,sim.home_team,sim.home_runs
-        if sim.home_runs > sim.away_runs:
-            total_home_wins += 1
-        else:
-            total_away_wins += 1
-        total_home_runs += sim.home_runs
-        total_away_runs += sim.away_runs
-
-
-        game_num += 1
-
-
-    print "Total Statistics:"
-    print "Home ("+str(sim.home_team)+") Wins:",total_home_wins
-    print "Away ("+str(sim.away_team)+") Wins:",total_away_wins
-    print "Avg Home Runs",total_home_runs/num_games
-    print "Avg Away Runs",total_away_runs/num_games
-
 
         #print "that batter had a",batter.prob("walk"),"percent chance of a walk"
 
