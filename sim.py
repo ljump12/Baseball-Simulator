@@ -44,24 +44,24 @@ class Simulation():
 
         #This will replace each last name with the player object 
         for player in self.home_players+self.away_players:
-            if player[3] in self.home_lineup+self.away_lineup:
+            if player[2] in self.home_lineup+self.away_lineup:
                 batter = Batter(player[2],player[3],player[4],self.conn)
                 batter.get_all_at_bats()
                 batter.process_at_bats()
                 print "Batter:",batter.id,batter.fn,batter.ln,batter.calc_batting_avg()
-                if batter.ln in self.home_lineup:
-                    self.home_lineup[self.home_lineup.index(batter.ln)] = batter
+                if batter.id in self.home_lineup:
+                    self.home_lineup[self.home_lineup.index(batter.id)] = batter
                 else:
-                    self.away_lineup[self.away_lineup.index(batter.ln)] = batter
+                    self.away_lineup[self.away_lineup.index(batter.id)] = batter
 
-            if player[3] in self.home_pitchers+self.away_pitchers:
+            if player[2] in self.home_pitchers+self.away_pitchers:
                 pitcher = Pitcher(player[2],player[3],player[4],self.conn)
                 pitcher.get_all_batters()
                 pitcher.process_at_bats()
-                if pitcher.ln in self.home_pitchers:
-                    self.home_pitchers[self.home_pitchers.index(pitcher.ln)] = pitcher
+                if pitcher.id in self.home_pitchers:
+                    self.home_pitchers[self.home_pitchers.index(pitcher.id)] = pitcher
                 else:
-                    self.away_pitchers[self.away_pitchers.index(pitcher.ln)] = pitcher
+                    self.away_pitchers[self.away_pitchers.index(pitcher.id)] = pitcher
 
     def determine_result(self, batter, pitcher):
         ##TODO:: ADD MORE
@@ -161,7 +161,7 @@ class Simulation():
         elif int(was_inning) >= 4:
             return half+" of the "+str(int(was_inning))+"th"
 
-    def run_sim():
+    def run_sim(self):
         total_home_wins = 0
         total_away_wins = 0
         total_home_runs = 0
@@ -213,12 +213,12 @@ def main():
     ## be replaced with player objects. 
     sim.year       = "2009"
     sim.home_team       = "PHI"
-    sim.home_pitchers   = ["Hamels","Park","Lidge"]
-    sim.home_lineup     = ["Rollins","Victorino","Utley","Howard","Werth","Ibanez","Feliz","Ruiz","Happ"]
+    sim.home_pitchers   = ["myerb001"]
+    sim.home_lineup     = ["rollj001","wertj001","utlec001","howar001","ibanr001","victs001","felip001","ruizc001","myerb001"]
 
     sim.away_team      = "ATL"
-    sim.away_pitchers  = ["Hanson"]
-    sim.away_lineup    = ["McLouth","Prado","Jones","Diaz","Anderson","Infante","Ross","Conrad","Hanson"]
+    sim.away_pitchers  = ["lowed001"]
+    sim.away_lineup    = ["johnk003","escoy001","jonec004","mccab002","andeg001","franj004","kotcc001","schak002","lowed001"]
 
     sim.get_player_data()
     sim.run_sim()
