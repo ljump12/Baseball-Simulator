@@ -1,4 +1,5 @@
 import MySQLdb
+import pickle
 import re 
 from copy import copy
 
@@ -7,7 +8,9 @@ def connect_mysql(host="localhost",db="retrosheet", un="retrosheet", pw="retrosh
     return MySQLdb.connect(host, un, pw, db)
 
 class Player():
-    def __init__(self, player_id, player_ln, player_fn, db_connect, start_date, end_date):
+
+
+    def __init__(self, player_id, player_ln, player_fn, position, db_connect, start_date, end_date):
         self.start_date             = start_date
         self.end_date               = end_date
         self.last_processed_date    = None
@@ -17,8 +20,12 @@ class Player():
         self.id      = player_id
         self.ln      = player_ln
         self.fn      = player_fn
+        ## Override the position if its LF RF or CF, and just make them OF
+        if position in ["LF","RF","CF"]:
+            position = "OF"
+        self.position = position
         
-        self.total_at_bats  = 0
+        self.total_at_bats  = 1.0
         ##TODO:: Earned runs/Runs, are close -- but not miscalculated
         self.total_runs     = 0
         self.total_ER       = 0
@@ -40,6 +47,16 @@ class Player():
         self.total_games    = 0
 
         self.snapshots      = {}
+
+        ## This will load in our mean player stats 
+        if self.position != "PITCHER":
+            self.mean_player = pickle.load(open("mean_players.pickle","r"))[self.position]
+        else:
+            self.mean_player = pickle.load(open("mean_pitcher.pickle","r"))
+
+        ## Create a null snapshot of the player..
+        self.snapshots["0"] = Snapshot(self)
+
 
     def cum_prob(self, type):
         """ This will return the cumulative probabilities, this allows us to
@@ -67,7 +84,7 @@ class Player():
 
         prob = None
         if type == "walk":
-            prob = float(self.total_walks)/self.plate_appearances()
+            prob = float(self.total_walks)/self.plate_appearances() 
         elif type == "single":
             prob = float(self.total_singles)/self.plate_appearances()
         elif type == "double":
@@ -78,12 +95,31 @@ class Player():
             prob = float(self.total_home_runs)/self.plate_appearances()
         return prob
 
+
+    def regress_once(self):
+        mean_player = self.mean_player
+
+        self.total_games        += (mean_player.total_games/mean_player.total_at_bats)
+        self.total_runs         += (mean_player.total_runs/mean_player.total_at_bats)
+        self.total_singles      += (mean_player.total_singles/mean_player.total_at_bats)
+        self.total_doubles      += (mean_player.total_doubles/mean_player.total_at_bats)
+        self.total_triples      += (mean_player.total_triples/mean_player.total_at_bats)
+        self.total_home_runs    += (mean_player.total_home_runs/mean_player.total_at_bats)
+        self.total_hits         += (mean_player.total_hits/mean_player.total_at_bats)
+        self.total_so           += (mean_player.total_so/mean_player.total_at_bats)
+        self.total_walks        += (mean_player.total_walks/mean_player.total_at_bats)
+        self.total_hbp          += (mean_player.total_hbp/mean_player.total_at_bats)
+        self.total_sac_fly      += (mean_player.total_sac_fly/mean_player.total_at_bats)
+        self.total_dp_ops       += (mean_player.total_dp_ops/mean_player.total_at_bats)
+        self.total_dp           += (mean_player.total_dp/mean_player.total_at_bats)
+        self.total_at_bats      += 1
+
     def plate_appearances(self):
         """ Calculates the number of plate appearances the player had """
 
         return (self.total_at_bats + self.total_walks + self.total_hbp + self.total_sac_fly)
 
-    def process_at_bats(self):
+    def process_at_bats(self, create_snapshots=True, regress_to_mean=True):
         """ Processes through the results from the database, adding each event to our
             player object
         """
@@ -139,15 +175,22 @@ class Player():
             if was_atbat == "T":
                 self.total_at_bats +=1
 
-            self.snapshots[date] = Snapshot(self)
+            if create_snapshots:
+                self.snapshots[date] = Snapshot(self)
+                while self.snapshots[date].total_at_bats < 400 and regress_to_mean:
+                    self.snapshots[date].regress_once()
+        ## After we have processed the at-bats, clear them from memory
+        self.atbats_raw = None
+
+        while (self.total_at_bats < 400 and regress_to_mean):
+            self.regress_once()
 
 
- 
 class Batter(Player):
     """ This extends the Player Object with certain function's individual to a batter """
 
-    def __init__(self, player_id, player_ln, player_fn, db_connect, start_date="090405", end_date="091001"):
-        Player.__init__(self, player_id, player_ln, player_fn, db_connect, start_date, end_date)
+    def __init__(self, player_id, player_ln=None, player_fn=None, position="X", db_connect=None, start_date="090405", end_date="091001"):
+        Player.__init__(self, player_id, player_ln, player_fn, position, db_connect, start_date, end_date)
 
     def calc_batting_avg(self):
         """ Calculates the batting avg of the batter """
@@ -179,43 +222,25 @@ class Batter(Player):
 
         return A*B/(B + C) + D
             
+    ##TODO:: Fix regress to MEAN based on player position averages
+    def regress_to_mean(self):
+        while (self.plate_appearances() < 100):
+            return
+
     def get_all_at_bats(self):
         """ This will retreive all at bats for the player between the start date and the end date """
         cursor = self.conn.cursor()
         ## This will get all at bats in 2009 from the player where it was the final event in the atbat
         sql = "select EVENTS.*,GAMES.GAME_DT FROM EVENTS LEFT JOIN GAMES ON EVENTS.GAME_ID = GAMES.GAME_ID "
-        sql +=" WHERE GAMES.GAME_DT > 90000 AND GAMES.GAME_DT < 100000 AND EVENTS.BAT_ID='"+self.id+"' AND EVENTS.BAT_EVENT_FL = 'T'" 
+        sql +=" WHERE GAMES.GAME_DT > "+self.start_date+" AND GAMES.GAME_DT < "+self.end_date+ " AND EVENTS.BAT_ID='"+self.id+"' AND EVENTS.BAT_EVENT_FL = 'T'" 
         sql +=" ORDER BY GAMES.GAME_DT"
         cursor.execute(sql)
         self.atbats_raw = cursor.fetchall()
-        
-class Snapshot(Batter):
-    """ This class is used to take a snapshot of a players stats in time, snapshots are added onto
-        player objects in a map, and can be accessed by their date. Becuase it is an extention of 
-        the batter, we can access all the normal functions as if it weren't a snapshot.
-    """
-    
-    def __init__(self, Batter):
-        self.total_at_bats  = copy(Batter.total_at_bats)
-        self.total_runs     = copy(Batter.total_runs)
-        self.total_hits     = copy(Batter.total_hits)
-        self.total_walks    = copy(Batter.total_walks)
-        self.total_so       = copy(Batter.total_so)
-        self.total_hbp      = copy(Batter.total_hbp)
-        self.total_sac_fly  = copy(Batter.total_sac_fly)
-        self.total_rbi      = copy(Batter.total_rbi)
-
-        self.total_singles  = copy(Batter.total_singles)
-        self.total_doubles  = copy(Batter.total_doubles)
-        self.total_triples  = copy(Batter.total_triples)
-        self.total_home_runs= copy(Batter.total_home_runs)
-
-        self.total_games    = copy(Batter.total_games)
 
 class Pitcher(Player):
     """ This extends the Player Object with certain function's individual to a batter """
-    def __init__(self, player_id, player_ln, player_fn, db_connect, start_date="090405", end_date="091001"):
-        Player.__init__(self, player_id, player_ln, player_fn, db_connect, start_date, end_date)
+    def __init__(self, player_id, player_ln=None, player_fn=None, position="PITCHER", db_connect=None, start_date="090405", end_date="091001"):
+        Player.__init__(self, player_id, player_ln, player_fn, position, db_connect, start_date, end_date)
 
     def get_all_batters(self):
         """ This will retreive all batters the pitcher faced between the start date and the end date """
@@ -255,6 +280,18 @@ class Snapshot(Pitcher):
         self.total_doubles  = copy(Pitcher.total_doubles)
         self.total_triples  = copy(Pitcher.total_triples)
         self.total_home_runs= copy(Pitcher.total_home_runs)
+        self.total_dp_ops   = copy(Pitcher.total_dp_ops)
+        self.total_dp       = copy(Pitcher.total_dp)
 
         self.total_games    = copy(Pitcher.total_games)
+        if Pitcher.position != "PITCHER":
+            self.mean_player    = Pitcher.mean_player
+    
+    def calc_batting_avg(self):
+        """ Calculates the batting avg of the batter """
+        if self.total_at_bats > 0:
+            return (self.total_hits/float(self.total_at_bats))
+        else:
+            return 0.0
+
 

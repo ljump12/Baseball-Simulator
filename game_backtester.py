@@ -13,7 +13,7 @@ def main():
 
     team = "PHI"
     ## This will get all the games for the team from 2009
-    sql = "SELECT * FROM GAMES WHERE (HOME_TEAM_ID = '"+team+"' OR AWAY_TEAM_ID = '"+team+"') AND GAME_DT >= 90400 AND GAME_DT <= 91201"
+    sql = "SELECT * FROM GAMES WHERE GAME_DT >= 90400 AND GAME_DT <= 90500"
     sql +=" ORDER BY GAMES.GAME_DT"
     cursor.execute(sql)
     games = cursor.fetchall() 
@@ -51,7 +51,7 @@ def main():
         away_score = game[34]
         home_score = game[35]
 
-        sim = Simulation()
+        sim = Simulation("2009_season_april.csv")
         sim.year = "2009"
         sim.home_team   = game[8]
         print sim.home_team
