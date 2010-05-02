@@ -56,6 +56,9 @@ class Player():
 
         ## Create a null snapshot of the player..
         self.snapshots["0"] = Snapshot(self)
+        ## Regress the null snapshot to the mean -- This should  just become a mean player
+        while self.snapshots["0"].total_at_bats < 400:
+            self.snapshots["0"].regress_once()
 
 
     def cum_prob(self, type):
@@ -184,7 +187,9 @@ class Player():
 
         while (self.total_at_bats < 400 and regress_to_mean):
             self.regress_once()
-
+        
+        ## We should no longer need the connection to the database
+        self.conn = None
 
 class Batter(Player):
     """ This extends the Player Object with certain function's individual to a batter """
@@ -284,8 +289,8 @@ class Snapshot(Pitcher):
         self.total_dp       = copy(Pitcher.total_dp)
 
         self.total_games    = copy(Pitcher.total_games)
-        if Pitcher.position != "PITCHER":
-            self.mean_player    = Pitcher.mean_player
+        #if Pitcher.position != "PITCHER":
+        self.mean_player    = Pitcher.mean_player
     
     def calc_batting_avg(self):
         """ Calculates the batting avg of the batter """

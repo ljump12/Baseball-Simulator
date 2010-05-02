@@ -13,12 +13,14 @@ def main():
 
     team = "PHI"
     ## This will get all the games for the team from 2009
-    sql = "SELECT * FROM GAMES WHERE GAME_DT >= 90400 AND GAME_DT <= 90500"
+    sql = "SELECT * FROM GAMES WHERE GAME_DT >= 90500 AND GAME_DT <= 91200"
     sql +=" ORDER BY GAMES.GAME_DT"
     cursor.execute(sql)
     games = cursor.fetchall() 
 
     overall_score = 0
+    
+    outputFile = open("2009_season_rest.csv", "w")
 
     for game in games:
         print game
@@ -51,7 +53,8 @@ def main():
         away_score = game[34]
         home_score = game[35]
 
-        sim = Simulation("2009_season_april.csv")
+
+        sim = Simulation(outputFile)
         sim.year = "2009"
         sim.home_team   = game[8]
         print sim.home_team

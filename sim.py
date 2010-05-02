@@ -1,4 +1,6 @@
 from players import *
+import pickle
+import os
 import random
 from bases import *
 
@@ -28,8 +30,7 @@ class Simulation():
         self.home_batter    = 0
         self.away_batter    = 0
 
-        self.outputFile = open(outputFile, "w")
-
+        self.outputFile = outputFile
         ## Seed the random number generator using /dev/random
         random.seed()
 
@@ -45,9 +46,15 @@ class Simulation():
         #This will replace each last name with the player object 
         for player in self.players:
             if player[2] in self.home_lineup+self.away_lineup:
-                batter = Batter(player[2],player[3],player[4],player[8],self.conn,"80405","100000")
-                batter.get_all_at_bats()
-                batter.process_at_bats()
+                pickle_file = "player_pickles/"+player[2]+"_batter_2009.pickle"
+                if os.path.exists(pickle_file):
+                    batter = pickle.load(open(pickle_file,"r"))
+                else:
+                    batter = Batter(player[2],player[3],player[4],player[8],self.conn,"80405","100000")
+                    batter.get_all_at_bats()
+                    batter.process_at_bats()
+                    pickle_fh = open(pickle_file,"w")
+                    pickle.dump(batter,pickle_fh)
                 print "Batter:",batter.id,batter.fn,batter.ln,batter.calc_batting_avg()
                 if batter.id in self.home_lineup:
                     self.home_lineup[self.home_lineup.index(batter.id)] = batter
@@ -55,9 +62,15 @@ class Simulation():
                     self.away_lineup[self.away_lineup.index(batter.id)] = batter
 
             if player[2] in self.home_pitchers+self.away_pitchers:
-                pitcher = Pitcher(player[2],player[3],player[4],"PITCHER",self.conn,"70405","100000")
-                pitcher.get_all_batters()
-                pitcher.process_at_bats()
+                pickle_file = "player_pickles/"+player[2]+"_pitcher_2009.pickle"
+                if os.path.exists(pickle_file):
+                    pitcher = pickle.load(open(pickle_file,"r"))
+                else:
+                    pitcher = Pitcher(player[2],player[3],player[4],"PITCHER",self.conn,"70405","100000")
+                    pitcher.get_all_batters()
+                    pitcher.process_at_bats()
+                    pickle_fh = open(pickle_file,"w")
+                    pickle.dump(pitcher,pickle_fh)
                 if pitcher.id in self.home_pitchers:
                     self.home_pitchers[self.home_pitchers.index(pitcher.id)] = pitcher
                 else:
@@ -174,6 +187,10 @@ class Simulation():
             print batter
             last_batter_date    = self.find_last_game_date(date, batter)
             print batter.fn,batter.ln,batter.snapshots[last_batter_date].calc_batting_avg(),"in",batter.snapshots[last_batter_date].total_at_bats,"at bats.."
+        for pitcher in self.home_pitchers+self.away_pitchers:
+            print pitcher
+            last_pitcher_date   = self.find_last_game_date(date, pitcher)
+            print pitcher.fn,pitcher.ln,pitcher.snapshots[last_pitcher_date].calc_opp_batting_avg(),"after facing",pitcher.snapshots[last_pitcher_date].total_at_bats,"batters"
 
         while (game_num < num_games):
             self.reset_game()
@@ -218,7 +235,7 @@ class Simulation():
         print "Avg Home Runs",total_home_runs/num_games
         print "Avg Away Runs",total_away_runs/num_games
         average_runs = (total_home_runs+total_away_runs)/num_games
-        self.outputFile.write(str(date)+","+str(self.away_team)+","+str(self.home_team)+","+str(self.away_wins)+","+str(self.home_wins)+","+str(average_runs)+"\n")
+        self.outputFile.write(str(date)+","+str(self.away_team)+","+str(self.home_team)+","+str(total_away_wins)+","+str(total_home_wins)+","+str(average_runs)+"\n")
         return (total_away_wins,total_home_wins,average_runs)
 
     def find_last_game_date(self, date, player):
